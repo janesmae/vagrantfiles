@@ -20,7 +20,7 @@ Vagrant.configure("2") do |config|
 
 	# Update
 	config.vm.provision "shell", privileged: false, inline: <<-SHELL
-		sudo apt-get update -y && sudo apt-get upgrade -y
+		sudo yum update -y
 	SHELL
 
 end
