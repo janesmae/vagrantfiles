@@ -2,25 +2,36 @@
 # vi: set ft=ruby :
 
 Vagrant.configure("2") do |config|
-	
+
+	# Variables
+	hostname = "centos7.box"
+	locale = "en_GB.UTF.8"
+
 	# Vanilla Centos 7 box
 	config.vm.box = "centos/7"
-	config.vm.host_name = "centos7.box"
+
+	config.vm.host_name = hostname
+	config.vm.define hostname do |t|
+	end
 
 	# Network
 	config.vm.network :forwarded_port, host: 3000, guest: 3000
+	config.vm.network :forwarded_port, host: 8080, guest: 8080
 	config.vm.network "private_network", ip: "10.10.10.10"
 
 	# Configure provider
 	config.vm.provider :virtualbox do |v|
-		v.name = "centos7.box"
+		v.name = hostname
 		v.memory = 1028
 		v.cpus = 1
 	end
 
 	# Update
 	config.vm.provision "shell", privileged: false, inline: <<-SHELL
+		touch .hushlogin
+		sudo hostnamectl set-hostname #{hostname}
 		sudo yum update -y
+		sudo yum install wget curl git vim
 	SHELL
 
 end
