@@ -1,0 +1,75 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+
+	# Variables
+	hostname = "Jetty.box"
+	locale = "en_GB.UTF.8"
+
+	# Centos 7 box running Jetty
+	config.vm.box = "centos/7"
+
+	config.vm.host_name = hostname
+	config.vm.define hostname do |t|
+	end
+
+	# Network
+	config.vm.network :forwarded_port, host: 3000, guest: 3000
+	config.vm.network :forwarded_port, host: 8080, guest: 8080
+	config.vm.network "private_network", ip: "10.10.10.10"
+
+	# Configure provider
+	config.vm.provider :virtualbox do |v|
+		v.name = hostname
+		v.memory = 1028
+		v.cpus = 1
+	end
+
+	# Update system and Jetty
+	config.vm.provision "shell", privileged: false, inline: <<-SHELL
+		touch .hushlogin
+		sudo hostnamectl set-hostname #{hostname}
+		sudo yum update -y
+		sudo yum install -y wget curl git vim
+
+		# Install JDK, Jetty and Postgres
+
+		#JDK
+		wget -q --no-cookies --no-check-certificate --header "Cookie: oraclelicense=accept-securebackup-cookie" "http://download.oracle.com/otn-pub/java/jdk/8u131-b11/d54c1d3a095b4ff2b6607d096fa80163/jdk-8u131-linux-x64.rpm" -O /opt/jdk-8-linux-x64.rpm
+		yum install -y /opt/jdk-8-linux-x64.rpm
+		touch /etc/profile.d/java.sh
+		echo 'export JAVA_HOME=/usr/java/latest' >> /etc/profile.d/java.sh
+		echo 'export PATH=$JAVA_HOME/bin:$PATH' >> /etc/profile.d/java.sh
+
+		# Jetty
+		wget -q http://central.maven.org/maven2/org/eclipse/jetty/jetty-distribution/9.4.6.v20170531/jetty-distribution-9.4.6.v20170531.tar.gz -O /opt/jetty-distribution-9.4.6.v20170531.tar.gz
+		tar -zxf /opt/jetty-distribution-9.4.6.v20170531.tar.gz -C /opt
+		mv /opt/jetty-distribution-9.4.6.v20170531 /opt/jetty-9.4.6
+		ln -s /opt/jetty-9.4.6 /opt/jetty
+
+		# Jetty settings
+		mkdir /opt/temp
+		mkdir /opt/webappbase
+		mv /opt/jetty/webapps /opt/webappbase/webapps
+		mv /opt/jetty/start.ini /opt/webappbase
+
+		# Jetty user permissions
+		useradd -m jetty
+		chown -RH jetty:jetty /opt/jetty
+		chown -R jetty:jetty /opt/webappbase
+		chown -R jetty:jetty /opt/temp
+
+		# Set up server
+		ln -s /opt/jetty/bin/jetty.sh /etc/init.d/jetty
+		chkconfig --add jetty
+		chkconfig --level 345 jetty on
+		touch /etc/default/jetty
+		echo 'TMPDIR=/opt/temp' >> /etc/default/jetty
+		echo 'JETTY_BASE=/opt/webappbase' >> /etc/default/jetty
+		echo 'JETTY_HOME=/opt/jetty' >> /etc/default/jetty
+		echo 'JETTY_USER=jetty' >> /etc/default/jetty
+		echo 'export JAVA_OPTIONS="-Xms128m -Xmx2048m -server -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled"' >> /etc/default/jetty
+	SHELL
+
+end
