@@ -31,7 +31,7 @@ Vagrant.configure("2") do |config|
 		touch .hushlogin
 		sudo hostnamectl set-hostname #{hostname}
 		sudo yum update -y
-		sudo yum install wget curl git vim
+		sudo yum install -y wget curl git vim
 	SHELL
 
 end
